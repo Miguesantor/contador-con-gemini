@@ -91,6 +91,26 @@
       opacity: 1;
     }
 
+    .identity-banner {
+      background: #334155;
+      padding: 12px 16px;
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+
+    .identity-btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      margin-left: 8px;
+      cursor: pointer;
+    }
+
     .reset-btn {
       margin-top: 30px;
       background: transparent;
@@ -112,8 +132,14 @@
     <p style="color: #94a3b8; font-size: 0.9rem;">Sincronizado en tiempo real</p>
   </header>
 
-  <div class="container" id="app">
-    <p style="text-align: center; color: #94a3b8;">Cargando marcador...</p>
+  <div class="container">
+    <div id="identityBanner" class="identity-banner">
+      Cargando identidad...
+    </div>
+
+    <div id="app" style="display: flex; flex-direction: column; gap: 15px;">
+      <p style="text-align: center; color: #94a3b8;">Cargando marcador...</p>
+    </div>
   </div>
 
   <button class="reset-btn" id="btnReset">Reiniciar Contadores</button>
@@ -137,7 +163,40 @@
     const db = getDatabase(app);
     const dbRef = ref(db, 'puntos');
 
-    const integrantesIniciales = { "Juan": 0, "Maria": 0 };
+    const integrantesIniciales = { "Miguel": 0, "Jonatan": 0 };
+
+    function obtenerUsuarioLocal() {
+      return localStorage.getItem('usuario_basura');
+    }
+
+    function guardarUsuarioLocal(nombre) {
+      localStorage.setItem('usuario_basura', nombre);
+      actualizarBannerIdentidad();
+      procesarSumaNFC();
+    }
+
+    function actualizarBannerIdentidad() {
+      const usuario = obtenerUsuarioLocal();
+      const banner = document.getElementById('identityBanner');
+
+      if (usuario) {
+        banner.innerHTML = `Este iPhone pertenece a: <b>${usuario}</b> 
+          <button class="identity-btn" onclick="cambiarUsuario()">Cambiar</button>`;
+      } else {
+        banner.innerHTML = `¿Quién eres en este iPhone?<br><br>
+          <button class="identity-btn" onclick="seleccionarUsuario('Miguel')">Miguel</button>
+          <button class="identity-btn" onclick="seleccionarUsuario('Jonatan')">Jonatan</button>`;
+      }
+    }
+
+    window.seleccionarUsuario = function(nombre) {
+      guardarUsuarioLocal(nombre);
+    };
+
+    window.cambiarUsuario = function() {
+      localStorage.removeItem('usuario_basura');
+      actualizarBannerIdentidad();
+    };
 
     onValue(dbRef, (snapshot) => {
       let puntos = snapshot.val();
@@ -172,22 +231,19 @@
       setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    async function procesarNFC() {
+    async function procesarSumaNFC() {
       const urlParams = new URLSearchParams(window.location.search);
-      const usuarioAccion = urlParams.get('usuario');
+      const debeSumar = urlParams.get('sumar');
+      const usuarioLocal = obtenerUsuarioLocal();
 
-      if (usuarioAccion) {
+      if (debeSumar && usuarioLocal) {
         const snapshot = await get(dbRef);
         let puntos = snapshot.val() || integrantesIniciales;
 
-        const usuarioMatch = Object.keys(puntos).find(
-          u => u.toLowerCase() === usuarioAccion.toLowerCase()
-        );
-
-        if (usuarioMatch) {
-          const nuevoPuntaje = puntos[usuarioMatch] + 1;
-          await set(ref(db, `puntos/${usuarioMatch}`), nuevoPuntaje);
-          mostrarToast(`¡+1 punto para ${usuarioMatch}! 🗑️`);
+        if (puntos[usuarioLocal] !== undefined) {
+          const nuevoPuntaje = puntos[usuarioLocal] + 1;
+          await set(ref(db, `puntos/${usuarioLocal}`), nuevoPuntaje);
+          mostrarToast(`¡+1 punto para ${usuarioLocal}! 🗑️`);
         }
 
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -195,12 +251,13 @@
     }
 
     document.getElementById('btnReset').addEventListener('click', () => {
-      if (confirm("¿Quieres reiniciar los contadores de todos a 0?")) {
+      if (confirm("¿Quieres reiniciar los contadores a 0?")) {
         set(dbRef, integrantesIniciales);
       }
     });
 
-    procesarNFC();
+    actualizarBannerIdentidad();
+    procesarSumaNFC();
   </script>
 </body>
 </html>
