@@ -243,6 +243,12 @@
         if (puntos[usuarioLocal] !== undefined) {
           const nuevoPuntaje = puntos[usuarioLocal] + 1;
           await set(ref(db, `puntos/${usuarioLocal}`), nuevoPuntaje);
+
+          // Intento de vibración web
+          if ("vibrate" in navigator) {
+            navigator.vibrate([100, 50, 100]);
+          }
+
           mostrarToast(`¡+1 punto para ${usuarioLocal}! 🗑️`);
         }
 
